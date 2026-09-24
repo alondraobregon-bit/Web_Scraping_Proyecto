@@ -1,0 +1,17 @@
+[project]
+name = "SpiderMarketplace"
+version = "0.1.0"
+description = "Web Scraping proyect for peruvian marketplaces using Scrapy"
+readme = "README.md"
+authors = [
+    { name = "gmborjasb", email = "70559579+gborjasb@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg[binary]>=3.3.5",
+    "python-dotenv>=1.2.3",
+    "scrapy>=2.19.0",
+    "scrapy-rotating-proxies>=0.6.2",
+]
+
+
