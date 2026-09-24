@@ -4,9 +4,7 @@
 # https://docs.scrapy.org/en/latest/topics/items.html
 
 from dataclasses import dataclass
-from typing import Concatenate, Optional
-
-import scrapy
+from typing import Optional
 
 
 @dataclass
@@ -15,6 +13,7 @@ class MarketplaceItem:
     brand: Optional[str] = None
     category: Optional[str] = None
     seller: Optional[str] = None
-    regular_price: Optional[str] = None
-    special_price: Optional[str] = None
-    cmr_price: Optional[str] = None
+    regular_price: Optional[float] = None
+    special_price: Optional[float] = None
+    cmr_price: Optional[float] = None
+    rating: Optional[float] = None

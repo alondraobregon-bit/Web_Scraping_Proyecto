@@ -30,6 +30,13 @@ class CleaningPipeline:
         if hasattr(spider, "_clean_product"):
             item.product = spider._clean_product(item.product)
 
+        # Rating is already cleaned by the spider; convert to float
+        if item.rating is not None:
+            try:
+                item.rating = float(item.rating)
+            except (ValueError, TypeError):
+                item.rating = None
+
         return item
 
 
@@ -52,9 +59,10 @@ class SupabasePipeline:
                 brand VARCHAR(50),
                 category VARCHAR(50),
                 seller VARCHAR(100),
-                old_price DECIMAL,
                 regular_price DECIMAL,
-                special_price DECIMAL, 
+                special_price DECIMAL,
+                cmr_price DECIMAL,
+                rating DECIMAL,
                 scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -67,7 +75,7 @@ class SupabasePipeline:
             return item
 
         self.cursor.execute(
-            "INSERT INTO marketplace (product, brand, category, seller,  regular_price, special_price, cmr_price) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO marketplace (product, brand, category, seller, regular_price, special_price, cmr_price, rating) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 item.product,
                 item.brand,
@@ -76,6 +84,7 @@ class SupabasePipeline:
                 item.regular_price,
                 item.special_price,
                 item.cmr_price,
+                item.rating,
             ),
         )
 

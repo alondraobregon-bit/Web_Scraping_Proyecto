@@ -1,78 +1,117 @@
 # SpiderMarketplace
 
-A Web Scraping project built with Python and [Scrapy](https://scrapy.org/), designed to extract detailed product and pricing data from retail e-commerce sites (Falabella).
+Proyecto de Web Scraping construido con Python y [Scrapy](https://scrapy.org/), disenado para extraer datos detallados de productos y precios del sitio de e-commerce de Falabella Peru.
 
-## Integrantes:
+## Integrantes
 - Alondra Solange Obregon Carhuavilca
 - Axel Roberth Portal Ruiz
 - Danna Nickol Gala Vasquez
 - Gerald Marcelo Fernando Borjas Bernaola
 
-## Prerequisites
+## Requisitos Previos
 
-- Python 3.10 or higher.
-- `uv`  
+- Python 3.10 o superior
 
-## Installation
+## Instalacion
 
-1. Clone the repository:
+1. Clonar el repositorio:
    ```bash
-   git clone https://github.com/gmborjasb/SpiderMarketplace.git
-   cd SpiderMarketplace
+   git clone https://github.com/alondraobregon-bit/Web_Scraping_Proyecto.git
+   cd Web_Scraping_Proyecto
    ```
 
-2. Install the dependencies and sync the environment:
+2. Crear y activar un entorno virtual:
    ```bash
-   uv sync
+   python -m venv .venv
    ```
+   - En **Windows**:
+     ```bash
+     .venv\Scripts\activate
+     ```
+   - En **macOS / Linux**:
+     ```bash
+     source .venv/bin/activate
+     ```
 
-## Environment Setup 
+3. Instalar las dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   > Si no existe un archivo `requirements.txt`, instalar manualmente:
+   > ```bash
+   > pip install scrapy psycopg[binary] python-dotenv scrapy-rotating-proxies
+   > ```
 
-This project requires(optional) a remote database connection to operate. 
+## Configuracion del Entorno
 
-1. Create a `.env` file in the root directory of the project.
-2. Add your Supabase Database URL to the file:
+Este proyecto requiere (opcionalmente) una conexion a base de datos remota.
+
+1. Crear un archivo `.env` en el directorio raiz del proyecto.
+2. Agregar la URL de tu base de datos Supabase:
 
 ```env
-SUPABASE_DB_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-SUPABASE-REF].supabase.co:5432/postgres
+SUPABASE_DB_URL=postgresql://postgres:[TU-PASSWORD]@db.[TU-REF-SUPABASE].supabase.co:5432/postgres
 ```
 
-For enable or disable use `settings.py`
+Para habilitar o deshabilitar los pipelines de limpieza y carga a BD, editar `settings.py`.
 
-## Usage
+## Uso
 
-To run the spiders, simply use the standard Scrapy CLI commands from the root directory.
+Ejecutar el spider de **Falabella** desde el directorio raiz:
 
-Run the **Falabella** spider:
 ```bash
 scrapy crawl falabella
 ```
- or 
-```bash
-uv run scrapy crawl falabella
-```
- or
+
+Para exportar los datos a un archivo CSV:
+
 ```bash
 scrapy crawl falabella -o falabella.csv
 ```
-to export data to `.csv`
- 
 
+## Arquitectura de Datos
 
-## Data Architecture
+El proyecto extrae datos en un dataclass tipado `MarketplaceItem` con los siguientes campos:
 
-The project extracts data into a strongly typed `MarketplaceItem` dataclass, containing the following fields:
-- `product`: Product name/title.
-- `brand`: Product brand.
-- `category`: Category of the product. 
-- `seller`: Marketplace seller name.
-- `old_price`: Original crossed-out price (Decimal).
-- `regular_price`: Standard price (Decimal).
-- `special_price`: Discounted/Card-exclusive price (Decimal).
+### Diccionario de Datos
+
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| `product` | `str` | Nombre completo del producto tal como aparece en la tarjeta de Falabella. |
+| `brand` | `str` | Marca del producto (ej. APPLE, SAMSUNG, XIAOMI). |
+| `category` | `str` | Categoria de la URL fuente: `phones`, `laptops` o `tvs`. |
+| `seller` | `str` | Nombre del vendedor en el marketplace (ej. "FALABELLA", "MARKETCELLPERU"). Se elimina el prefijo "Por" automaticamente. |
+| `regular_price` | `float` | **Precio de lista / referencial** -- el precio mas alto, mostrado tachado en la tarjeta. Corresponde al atributo HTML `data-normal-price`. |
+| `special_price` | `float` | **Precio con descuento general** -- precio intermedio disponible para todos los compradores. Se muestra en texto gris/negro. Corresponde al atributo HTML `data-internet-price` o `data-event-price`. |
+| `cmr_price` | `float` | **Precio exclusivo CMR** -- precio mas bajo, disponible solo con tarjeta CMR Falabella / Banco Falabella. Se muestra en rojo con el badge CMR. Corresponde al atributo HTML `data-cmr-price`. |
+| `rating` | `float` | Calificacion promedio del producto (escala 1.0 - 5.0), extraida del atributo `data-rating`. `None` si el producto no tiene resenas. |
+
+### Jerarquia de Precios de Falabella
+
+Falabella muestra hasta **3 niveles de precio** en cada tarjeta de producto, de mayor a menor:
+
+```
++---------------------------------------------------------+
+|  S/ 5,999   <- regular_price  (tachado, gris claro)     |
+|  S/ 5,699   <- special_price  (texto normal, negro)     |
+|  S/ 5,499   <- cmr_price      (rojo, badge CMR)         |
++---------------------------------------------------------+
+```
+
+**Casos posibles segun el producto:**
+
+| Escenario | `regular_price` | `special_price` | `cmr_price` |
+|---|---|---|---|
+| 3 precios (descuento + CMR) | Tachado | Descuento general | CMR |
+| 2 precios (descuento, sin CMR) | Tachado | Descuento general | `None` |
+| 2 precios (solo CMR, sin intermedio) | Tachado | `None` | CMR |
+| 1 precio (sin descuento) | Precio unico | `None` | `None` |
 
 ### Pipelines
-Data flows through two main pipelines before completion:
-1. **CleaningPipeline**: Cleans the raw strings, removes commas/spaces, and converts strings to numeric representations.
-2. **SupabasePipeline**: Opens a connection to Postgres and performs `INSERT` operations at the end of the spider's run.
 
-For enable or disable use `settings.py`
+Los datos pasan por dos pipelines antes de ser almacenados:
+
+1. **CleaningPipeline**: Limpia las cadenas de texto, elimina comas/espacios y convierte los valores a representacion numerica (precios a `float`, rating a `float`).
+2. **SupabasePipeline**: Abre una conexion a PostgreSQL y ejecuta operaciones `INSERT` al finalizar la ejecucion del spider.
+
+Para habilitar o deshabilitar los pipelines, editar `settings.py`.
