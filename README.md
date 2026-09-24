@@ -83,35 +83,25 @@ El proyecto extrae datos en un dataclass tipado `MarketplaceItem` con los siguie
 | `seller` | `str` | Nombre del vendedor en el marketplace (ej. "FALABELLA", "MARKETCELLPERU"). Se elimina el prefijo "Por" automaticamente. |
 | `regular_price` | `float` | **Precio de lista / referencial** -- el precio mas alto, mostrado tachado en la tarjeta. Corresponde al atributo HTML `data-normal-price`. |
 | `special_price` | `float` | **Precio con descuento general** -- precio intermedio disponible para todos los compradores. Se muestra en texto gris/negro. Corresponde al atributo HTML `data-internet-price` o `data-event-price`. |
-| `cmr_price` | `float` | **Precio exclusivo CMR** -- precio mas bajo, disponible solo con tarjeta CMR Falabella / Banco Falabella. Se muestra en rojo con el badge CMR. Corresponde al atributo HTML `data-cmr-price`. |
-| `rating` | `float` | Calificacion promedio del producto (escala 1.0 - 5.0), extraida del atributo `data-rating`. `None` si el producto no tiene resenas. |
+| `has_cmr_discount`| `int` | **Indicador de Descuento CMR** -- valor booleano/entero (`1` o `0`). Indica si el producto cuenta con un precio de descuento exclusivo con tarjeta CMR / Banco Falabella. |
 
 ### Jerarquia de Precios de Falabella
 
-Falabella muestra hasta **3 niveles de precio** en cada tarjeta de producto, de mayor a menor:
+Falabella muestra multiples niveles de precio en cada tarjeta de producto. Nosotros extraemos los 2 principales e indicamos si existe un tercer descuento:
 
 ```
 +---------------------------------------------------------+
-|  S/ 5,999   <- regular_price  (tachado, gris claro)     |
-|  S/ 5,699   <- special_price  (texto normal, negro)     |
-|  S/ 5,499   <- cmr_price      (rojo, badge CMR)         |
+|  S/ 5,999   <- regular_price     (tachado, gris claro)  |
+|  S/ 5,699   <- special_price     (texto normal, negro)  |
+|  S/ 5,499   <- has_cmr_discount  (es 1 si existe)       |
 +---------------------------------------------------------+
 ```
-
-**Casos posibles segun el producto:**
-
-| Escenario | `regular_price` | `special_price` | `cmr_price` |
-|---|---|---|---|
-| 3 precios (descuento + CMR) | Tachado | Descuento general | CMR |
-| 2 precios (descuento, sin CMR) | Tachado | Descuento general | `None` |
-| 2 precios (solo CMR, sin intermedio) | Tachado | `None` | CMR |
-| 1 precio (sin descuento) | Precio unico | `None` | `None` |
 
 ### Pipelines
 
 Los datos pasan por dos pipelines antes de ser almacenados:
 
-1. **CleaningPipeline**: Limpia las cadenas de texto, elimina comas/espacios y convierte los valores a representacion numerica (precios a `float`, rating a `float`).
+1. **CleaningPipeline**: Limpia las cadenas de texto, y unifica el formato general de los datos.
 2. **SupabasePipeline**: Abre una conexion a PostgreSQL y ejecuta operaciones `INSERT` al finalizar la ejecucion del spider.
 
 Para habilitar o deshabilitar los pipelines, editar `settings.py`.

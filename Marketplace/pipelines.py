@@ -1,10 +1,10 @@
-# Define your item pipelines here
+# Define aquí tus pipelines de items
 #
-# Don't forget to add your pipeline to the ITEM_PIPELINES setting
-# See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
+# No olvides añadir tu pipeline a la configuración ITEM_PIPELINES
+# Ver: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 
 
-# useful for handling different item types with a single interface
+# útil para manejar diferentes tipos de items con una única interfaz
 import os
 import psycopg
 from dotenv import load_dotenv
@@ -14,28 +14,11 @@ load_dotenv()
 
 class CleaningPipeline:
     def process_item(self, item, spider):
-
-        if hasattr(spider, "_clean_price"):
-            reg = spider._clean_price(item.regular_price)
-            spe = spider._clean_price(item.special_price)
-            cmr = spider._clean_price(item.cmr_price)
-
-            item.regular_price = float(reg) if reg else None
-            item.special_price = float(spe) if spe else None
-            item.cmr_price = float(cmr) if cmr else None
-
-        if hasattr(spider, "_clean_seller"):
-            item.seller = spider._clean_seller(item.seller)
-
+        # La limpieza de precios y vendedores ya se realiza en el spider,
+        # pero mantenemos este pipeline en caso se requiera manipulación adicional.
+        
         if hasattr(spider, "_clean_product"):
             item.product = spider._clean_product(item.product)
-
-        # Rating is already cleaned by the spider; convert to float
-        if item.rating is not None:
-            try:
-                item.rating = float(item.rating)
-            except (ValueError, TypeError):
-                item.rating = None
 
         return item
 
@@ -46,7 +29,7 @@ class SupabasePipeline:
 
         if not db_url:
             raise ValueError(
-                "ValueError: Environment variable SUPABASE_DB_URL is not set."
+                "ValueError: La variable de entorno SUPABASE_DB_URL no está configurada."
             )
 
         self.conn = psycopg.connect(db_url)
@@ -61,8 +44,7 @@ class SupabasePipeline:
                 seller VARCHAR(100),
                 regular_price DECIMAL,
                 special_price DECIMAL,
-                cmr_price DECIMAL,
-                rating DECIMAL,
+                has_cmr_discount INTEGER,
                 scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -75,7 +57,7 @@ class SupabasePipeline:
             return item
 
         self.cursor.execute(
-            "INSERT INTO marketplace (product, brand, category, seller, regular_price, special_price, cmr_price, rating) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO marketplace (product, brand, category, seller, regular_price, special_price, has_cmr_discount) VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (
                 item.product,
                 item.brand,
@@ -83,8 +65,7 @@ class SupabasePipeline:
                 item.seller,
                 item.regular_price,
                 item.special_price,
-                item.cmr_price,
-                item.rating,
+                item.has_cmr_discount,
             ),
         )
 

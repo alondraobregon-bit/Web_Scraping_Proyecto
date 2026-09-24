@@ -1,6 +1,6 @@
-# Define here the models for your scraped items
+# Define aquí los modelos para los items extraídos
 #
-# See documentation in:
+# Ver documentación en:
 # https://docs.scrapy.org/en/latest/topics/items.html
 
 from dataclasses import dataclass
@@ -15,5 +15,4 @@ class MarketplaceItem:
     seller: Optional[str] = None
     regular_price: Optional[float] = None
     special_price: Optional[float] = None
-    cmr_price: Optional[float] = None
-    rating: Optional[float] = None
+    has_cmr_discount: Optional[int] = None
